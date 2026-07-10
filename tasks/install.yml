@@ -1,0 +1,11 @@
+# Runs as the login user (no become). `postinstall` initialises submodules
+# recursively and builds jbr + the native hdt/nan addon (needs build-essential).
+- name: Install Node dependencies (yarn install)
+  ansible.builtin.command:
+    cmd: yarn install
+    chdir: "{{ experiment_dest }}"
+  environment:
+    GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=accept-new"
+    PATH: "{{ ansible_env.HOME }}/.cargo/bin:{{ ansible_env.PATH }}"
+  register: yarn_install
+  changed_when: true

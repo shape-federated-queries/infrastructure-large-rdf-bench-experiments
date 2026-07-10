@@ -1,0 +1,39 @@
+# sophia-cli provides the `sop` binary used by the Makefile's validate-clean-dataset
+# target (part of `make pipeline`). Installed per-user via rustup + cargo.
+
+- name: Install Clang (sop's aws-lc-sys dependency rejects the node's old GCC)
+  ansible.builtin.apt:
+    name: clang
+    state: present
+  become: true
+
+- name: Install rustup and the Rust toolchain for {{ ansible_user }}
+  ansible.builtin.shell: |
+    set -e
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+  args:
+    executable: /bin/bash
+    creates: "{{ ansible_env.HOME }}/.cargo/bin/rustc"
+
+- name: Install sophia-cli (provides the `sop` binary)
+  # Not on crates.io; installed from source (see the benchmark README).
+  # CC=clang: aws-lc-sys refuses to build with the node's bug-affected GCC.
+  ansible.builtin.shell: |
+    set -e
+    . "$HOME/.cargo/env"
+    cargo install --locked --git https://github.com/pchampin/sophia-cli
+  environment:
+    CC: clang
+    CXX: clang++
+  args:
+    executable: /bin/bash
+    creates: "{{ ansible_env.HOME }}/.cargo/bin/sop"
+
+- name: Confirm sop is available
+  ansible.builtin.command: "{{ ansible_env.HOME }}/.cargo/bin/sop --version"
+  register: sop_version
+  changed_when: false
+
+- name: Report sop version
+  ansible.builtin.debug:
+    var: sop_version.stdout

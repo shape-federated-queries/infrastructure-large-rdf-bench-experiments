@@ -1,0 +1,33 @@
+- name: Provision a Virtual Wall node so the LargeRDFBench experiment is ready to run
+  hosts: wall
+  gather_facts: true
+  tasks:
+    - name: "[1/9] Expand root disk to full physical disk (+reboot)"
+      ansible.builtin.include_tasks: tasks/expand_disk.yml
+      when: expand_root_disk | bool
+
+    - name: "[2/9] Enable outbound IPv4 internet (NAT)"
+      ansible.builtin.include_tasks: tasks/enable_internet.yml
+      when: enable_nat | bool
+
+    - name: "[3/9] System setup and base dependencies"
+      ansible.builtin.include_tasks: tasks/system.yml
+
+    - name: "[4/9] Install Docker"
+      ansible.builtin.include_tasks: tasks/docker.yml
+
+    - name: "[5/9] Install Node.js and Yarn"
+      ansible.builtin.include_tasks: tasks/nodejs.yml
+
+    - name: "[6/9] Install Go"
+      ansible.builtin.include_tasks: tasks/golang.yml
+
+    - name: "[7/9] Install sophia-cli (sop)"
+      ansible.builtin.include_tasks: tasks/sop.yml
+      when: install_sop | bool
+
+    - name: "[8/9] Clone the experiment repository (+submodules)"
+      ansible.builtin.include_tasks: tasks/clone.yml
+
+    - name: "[9/9] Install Node dependencies (yarn install)"
+      ansible.builtin.include_tasks: tasks/install.yml

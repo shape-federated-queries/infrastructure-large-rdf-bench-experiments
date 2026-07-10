@@ -1,0 +1,26 @@
+# =============================================================================
+# Copy this file to `inventory.ini` and adjust the four values below.
+# `inventory.ini` is git-ignored so your node/user/key never get committed.
+#
+#   ansible playbook value        <->  group_vars/all.yml
+#   --------------------------------------------------------------------------
+#   [wall] hostname               <->  wall_node_host
+#   ansible_user                  <->  wall_ssh_user
+#   ansible_ssh_private_key_file  <->  wall_pem_file
+#   ProxyCommand bastion login    <->  wall_bastion_user @ wall_bastion_host
+#
+# Ansible parses the inventory before group_vars, so the connection string
+# cannot be {{ }}-templated -- keep these in sync with all.yml by hand.
+# =============================================================================
+
+[wall]
+n061-07a.wall2.ilabt.iminds.be     # <-- the node from jFed (update on each swap-in)
+
+[wall:vars]
+ansible_user=brtamuge
+ansible_ssh_private_key_file=~/.ssh/ilabt.pem
+# ForwardAgent=yes  -> git clone of the private repo/submodules uses YOUR forwarded
+#                      SSH agent (run `ssh-add <github-key>` before the playbook).
+# ProxyCommand      -> jump through the imec bastion (same as -oProxyCommand="... -W %h:%p").
+ansible_ssh_common_args=-o ForwardAgent=yes -o ServerAliveInterval=120 -o ProxyCommand="ssh -i ~/.ssh/ilabt.pem -W %h:%p fffbrtamuge@bastion.ilabt.imec.be"
+ansible_python_interpreter=/usr/bin/python3

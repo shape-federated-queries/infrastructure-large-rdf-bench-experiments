@@ -1,0 +1,8 @@
+# Local, host-specific inventory (copy from inventory.ini.example)
+inventory.ini
+
+# Ansible artifacts
+*.retry
+
+# Never commit private keys
+*.pem

@@ -1,0 +1,39 @@
+---
+# =============================================================================
+# All tunable settings for the benchmark_infrastructure playbook live here.
+# Task files under tasks/ reference these variables only -- no literals.
+#
+# The Virtual Wall *connection* settings (node/bastion/user/PEM) below are the
+# source of truth; the very same four values must also be reflected in the
+# [wall:vars] block of inventory.ini, because Ansible reads the inventory
+# *before* group_vars and therefore cannot template the SSH connection string
+# from here. See inventory.ini.example for the 1:1 mapping.
+# =============================================================================
+
+# --- Virtual Wall connection (mirror these in inventory.ini) -----------------
+wall_bastion_host: bastion.ilabt.imec.be
+wall_bastion_user: fffbrtamuge
+wall_node_host: n061-07a.wall2.ilabt.iminds.be   # changes on each jFed swap-in
+wall_ssh_user: brtamuge
+wall_pem_file: ~/.ssh/ilabt.pem
+
+# --- Testbed provisioning ----------------------------------------------------
+# Base URL that serves the imec Virtual Wall helper scripts.
+wall_scripts_base: https://www.wall2.ilabt.iminds.be
+# Enlarge the root partition to fill the physical disk(s) (reboots the node).
+expand_root_disk: true
+# Enable outbound IPv4 via NAT (IPv6 is on by default but GitHub/DockerHub/npm
+# are effectively IPv4-only). Re-applied every run -- it is not reboot-persistent.
+enable_nat: true
+
+# --- Experiment (cloned + yarn-installed, then left ready for you to run) -----
+experiment_repo: git@github.com:shape-federated-queries/ask-count-fedx-large-rdf-bench.git
+experiment_version: main
+experiment_dest: "{{ ansible_env.HOME }}/experiment"
+
+# --- Toolchain ---------------------------------------------------------------
+nodejs_major: "22"
+yarn_version: "1.22.22"
+# Rust + sophia-cli (sop). Required: `make pipeline` runs validate-clean-dataset
+# which invokes `sop`. Only set false if you trim those targets out.
+install_sop: true

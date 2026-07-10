@@ -1,0 +1,42 @@
+- name: Check the installed Node.js version
+  ansible.builtin.command: node --version
+  register: node_version
+  changed_when: false
+  failed_when: false
+
+- name: Add the NodeSource repository and install Node.js {{ nodejs_major }}.x
+  ansible.builtin.shell: |
+    set -e
+    curl -fsSL https://deb.nodesource.com/setup_{{ nodejs_major }}.x | bash -
+    apt-get install -y nodejs
+  args:
+    executable: /bin/bash
+  become: true
+  when: node_version.rc != 0 or not node_version.stdout.startswith('v' + nodejs_major + '.')
+
+- name: Provide a global Yarn (Corepack shim; matches package.json packageManager)
+  ansible.builtin.shell: |
+    set -e
+    if command -v corepack >/dev/null 2>&1; then
+      corepack enable
+      corepack prepare yarn@{{ yarn_version }} --activate
+    else
+      npm install -g yarn@{{ yarn_version }}
+    fi
+  args:
+    executable: /bin/bash
+  become: true
+  changed_when: true
+
+- name: Confirm Node and Yarn are available
+  ansible.builtin.shell: |
+    node --version
+    yarn --version
+  args:
+    executable: /bin/bash
+  register: node_yarn_versions
+  changed_when: false
+
+- name: Report Node and Yarn versions
+  ansible.builtin.debug:
+    var: node_yarn_versions.stdout_lines

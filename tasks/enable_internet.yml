@@ -1,0 +1,41 @@
+# IPv6 is on by default; this adds outbound IPv4 (NAT) for GitHub / Docker Hub /
+# npm, which are effectively IPv4-only. enable-nat.sh is NOT idempotent -- it errors
+# if NAT is already enabled -- so we probe connectivity first and only run it when
+# needed. github.com is IPv4-only, so it is a good IPv4 reachability test.
+
+- name: Check whether outbound IPv4 internet already works
+  ansible.builtin.uri:
+    url: https://github.com
+    method: HEAD
+    timeout: 15
+  register: net_check
+  failed_when: false
+  changed_when: false
+
+- name: Enable outbound IPv4 internet via NAT (only if not already reachable)
+  ansible.builtin.shell: >-
+    wget -O - -nv --ciphers DEFAULT@SECLEVEL=1 {{ wall_scripts_base }}/enable-nat.sh | bash
+  args:
+    executable: /bin/bash
+  become: true
+  when: (net_check.status | default(-1) | int) < 200
+  register: nat_result
+  changed_when: true
+  failed_when: false
+
+- name: Re-check outbound connectivity after enabling NAT
+  ansible.builtin.uri:
+    url: https://github.com
+    method: HEAD
+    timeout: 15
+  register: net_recheck
+  when: (net_check.status | default(-1) | int) < 200
+  failed_when: false
+  changed_when: false
+
+- name: Fail if the node still has no outbound internet
+  ansible.builtin.fail:
+    msg: "No outbound IPv4 internet and enable-nat.sh could not configure it."
+  when:
+    - (net_check.status | default(-1) | int) < 200
+    - (net_recheck.status | default(-1) | int) < 200

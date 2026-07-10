@@ -1,0 +1,28 @@
+- name: Check whether the root disk has already been expanded
+  ansible.builtin.stat:
+    path: /var/local/benchmark-infra-root-expanded
+  register: root_expanded_marker
+
+- name: Expand the root partition to fill the physical disk(s)
+  # imec Virtual Wall helper; grows / into all unallocated space on the disk.
+  ansible.builtin.shell: >-
+    bash -e -c '. <(wget -O - -nv --ciphers DEFAULT@SECLEVEL=1 -q
+    {{ wall_scripts_base }}/expand-root-disk.sh) --auto'
+  become: true
+  when: not root_expanded_marker.stat.exists
+  register: expand_result
+  changed_when: true
+
+- name: Record that the root disk has been expanded
+  ansible.builtin.copy:
+    dest: /var/local/benchmark-infra-root-expanded
+    content: "expanded\n"
+    mode: "0644"
+  become: true
+  when: not root_expanded_marker.stat.exists
+
+- name: Reboot to apply the resized partition
+  ansible.builtin.reboot:
+    reboot_timeout: 900
+  become: true
+  when: not root_expanded_marker.stat.exists

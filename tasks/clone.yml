@@ -1,0 +1,14 @@
+# Runs as the login user (no become) so the SSH agent forwarded from your laptop
+# authenticates the git@github.com clone of the private repo and its submodules.
+# Make sure `ssh-add <your-github-key>` was run locally before the playbook.
+
+- name: Clone the experiment repository with submodules
+  ansible.builtin.git:
+    repo: "{{ experiment_repo }}"
+    dest: "{{ experiment_dest }}"
+    version: "{{ experiment_version }}"
+    recursive: true
+    accept_hostkey: true
+    update: true
+  environment:
+    GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=accept-new"

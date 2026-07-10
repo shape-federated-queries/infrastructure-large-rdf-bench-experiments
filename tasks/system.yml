@@ -1,0 +1,41 @@
+- name: Update apt cache and upgrade packages
+  ansible.builtin.apt:
+    update_cache: true
+    upgrade: dist
+  become: true
+
+- name: Install base build and archive tooling
+  ansible.builtin.apt:
+    name:
+      - build-essential   # C/C++ toolchain for the native hdt/nan node addon
+      - pkg-config
+      - git
+      - curl
+      - wget
+      - unzip
+      - p7zip-full        # provides 7za/7zr
+      - make
+      - screen            # run the (multi-day) benchmark detached from your laptop
+      - ca-certificates
+    state: present
+    update_cache: true
+  become: true
+
+# The data Makefile calls `7z x`. On Ubuntu 23.04+ the `7z` binary ships in the
+# separate `7zip` package; on 22.04 it does not exist. Install it when available,
+# then guarantee a `7z` command either way by falling back to 7za.
+- name: Install 7-Zip (provides the `7z` binary on newer Ubuntu)
+  ansible.builtin.apt:
+    name: 7zip
+    state: present
+  become: true
+  register: sevenzip_pkg
+  failed_when: false
+
+- name: Ensure a `7z` command exists (fallback to 7za from p7zip-full)
+  ansible.builtin.shell: |
+    command -v 7z >/dev/null 2>&1 || ln -sf "$(command -v 7za)" /usr/local/bin/7z
+  args:
+    executable: /bin/bash
+  become: true
+  changed_when: false

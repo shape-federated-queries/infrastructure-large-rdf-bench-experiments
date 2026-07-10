@@ -1,0 +1,16 @@
+# Go builds the merge_clean cleaning tools used by the data pipeline.
+- name: Install Go
+  ansible.builtin.apt:
+    name: golang-go
+    state: present
+    update_cache: true
+  become: true
+
+- name: Report the installed Go version
+  ansible.builtin.command: go version
+  register: go_version_out
+  changed_when: false
+
+- name: Show Go version
+  ansible.builtin.debug:
+    var: go_version_out.stdout
