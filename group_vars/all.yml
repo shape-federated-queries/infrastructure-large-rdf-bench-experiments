@@ -34,6 +34,7 @@ experiment_dest: "{{ ansible_env.HOME }}/experiment"
 # --- Toolchain ---------------------------------------------------------------
 nodejs_major: "22"
 yarn_version: "1.22.22"
+go_version: "1.23.4"
 # Rust + sophia-cli (sop). Required: `make pipeline` runs validate-clean-dataset
 # which invokes `sop`. Only set false if you trim those targets out.
 install_sop: true

@@ -1,10 +1,34 @@
-# Go builds the merge_clean cleaning tools used by the data pipeline.
-- name: Install Go
+# The apt Go is too old for the merge_clean tools (they need >= 1.21). Install a
+# current Go from the official tarball and symlink it onto the default PATH.
+- name: Remove the distro Go that would shadow the tarball install
   ansible.builtin.apt:
     name: golang-go
-    state: present
-    update_cache: true
+    state: absent
   become: true
+
+- name: Check the installed Go version
+  ansible.builtin.command: /usr/local/go/bin/go version
+  register: go_installed
+  changed_when: false
+  failed_when: false
+
+- name: Download and install Go {{ go_version }}
+  ansible.builtin.unarchive:
+    src: "https://go.dev/dl/go{{ go_version }}.linux-amd64.tar.gz"
+    dest: /usr/local
+    remote_src: true
+  become: true
+  when: go_installed.rc != 0 or go_version not in go_installed.stdout
+
+- name: Symlink go and gofmt onto the default PATH
+  ansible.builtin.file:
+    src: "/usr/local/go/bin/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    state: link
+  become: true
+  loop:
+    - go
+    - gofmt
 
 - name: Report the installed Go version
   ansible.builtin.command: go version
