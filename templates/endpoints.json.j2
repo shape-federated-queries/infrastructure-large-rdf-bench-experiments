@@ -1,0 +1,7 @@
+{
+  "endpoints": {
+{% for host in groups['endpoints'] %}
+    "{{ host }}": { "host": "{{ hostvars[host].ansible_host }}", "port": {{ hostvars[host].endpoint_port }} }{{ "," if not loop.last }}
+{% endfor %}
+  }
+}

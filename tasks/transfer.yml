@@ -1,0 +1,12 @@
+# Push this endpoint's HDT + external index from the client over the internal LAN.
+# rsync runs ON the client (delegate_to) and targets this endpoint's wall address.
+# Requires client->endpoint SSH (jFed usually gives passwordless inter-node SSH).
+- name: Copy this endpoint's HDT (+index) from the client
+  ansible.builtin.command:
+    cmd: >
+      rsync -a
+      -e "ssh -o StrictHostKeyChecking=accept-new -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa"
+      "{{ experiment_dest }}/data/benchmark/datasets/hdt/{{ inventory_hostname }}.hdt{{ item }}"
+      "{{ ansible_user }}@{{ ansible_host }}:{{ endpoint_data_dir }}/"
+  delegate_to: "{{ groups['client'][0] }}"
+  loop: [ "", ".index.v1-1" ]

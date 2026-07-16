@@ -3,17 +3,16 @@
 # All tunable settings for the benchmark_infrastructure playbook live here.
 # Task files under tasks/ reference these variables only -- no literals.
 #
-# The Virtual Wall *connection* settings (node/bastion/user/PEM) below are the
-# source of truth; the very same four values must also be reflected in the
-# [wall:vars] block of inventory.ini, because Ansible reads the inventory
-# *before* group_vars and therefore cannot template the SSH connection string
-# from here. See inventory.ini.example for the 1:1 mapping.
+# The Virtual Wall *connection* settings (bastion/user/PEM) below are documented
+# here; the actual per-host addresses and the SSH connection string live in
+# inventory.yml, because Ansible reads the inventory *before* group_vars and
+# therefore cannot template the connection string from here. See
+# inventory.yml.example for the mapping.
 # =============================================================================
 
-# --- Virtual Wall connection (mirror these in inventory.ini) -----------------
+# --- Virtual Wall connection (mirror these in inventory.yml) -----------------
 wall_bastion_host: bastion.ilabt.imec.be
 wall_bastion_user: fffbrtamuge
-wall_node_host: n061-07a.wall2.ilabt.iminds.be   # changes on each jFed swap-in
 wall_ssh_user: brtamuge
 wall_pem_file: ~/.ssh/ilabt.pem
 
@@ -30,6 +29,11 @@ enable_nat: true
 experiment_repo: git@github.com:shape-federated-queries/ask-count-fedx-large-rdf-bench.git
 experiment_version: main
 experiment_dest: "{{ ansible_env.HOME }}/experiment"
+
+# --- Endpoints ---------------------------------------------------------------
+endpoint_data_dir: "{{ ansible_env.HOME }}/data"
+endpoint_comunica_pkg: "@comunica/query-sparql-hdt"
+endpoint_node_heap_mb: 18432
 
 # --- Toolchain ---------------------------------------------------------------
 nodejs_major: "22"

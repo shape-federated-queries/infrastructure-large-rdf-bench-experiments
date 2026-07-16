@@ -1,0 +1,20 @@
+# Once the client's data generation is done: transfer each HDT from the client to
+# the endpoint that serves it, start comunica there, then render endpoints.json on
+# the client and sanity-check every endpoint. Leaves the experiment ready; you start
+# the run yourself (`make run`).
+- name: Transfer HDTs and start the endpoints
+  hosts: endpoints
+  gather_facts: true
+  tasks:
+    - name: Push this endpoint's HDT (+index) from the client
+      ansible.builtin.include_tasks: tasks/transfer.yml
+
+    - name: Serve this endpoint's HDT with comunica
+      ansible.builtin.include_tasks: tasks/start_endpoint.yml
+
+- name: Render endpoints.json and sanity-check
+  hosts: client
+  gather_facts: true
+  tasks:
+    - name: Render endpoints.json from the inventory and run the healthcheck
+      ansible.builtin.include_tasks: tasks/sanity_check.yml

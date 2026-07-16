@@ -1,4 +1,5 @@
-# Local, host-specific inventory (copy from inventory.ini.example)
+# Local, host-specific inventory (copy from inventory.yml.example)
+inventory.yml
 inventory.ini
 
 # Ansible artifacts

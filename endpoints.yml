@@ -1,0 +1,9 @@
+# Provision the 13 SPARQL endpoint nodes: install comunica so each can serve one
+# HDT. Light and independent of the client -- runs concurrently with client.yml via
+# `make provision`. Assumes `common.yml` ran first.
+- name: Provision the SPARQL endpoint nodes (comunica host)
+  hosts: endpoints
+  gather_facts: true
+  tasks:
+    - name: Install the comunica SPARQL-HDT endpoint
+      ansible.builtin.include_tasks: tasks/endpoint_setup.yml

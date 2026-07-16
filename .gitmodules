@@ -1,0 +1,3 @@
+[submodule "modernized_large_rdf_bench_benchmark"]
+	path = modernized_large_rdf_bench_benchmark
+	url = git@github.com:shape-federated-queries/ask-count-fedx-large-rdf-bench.git

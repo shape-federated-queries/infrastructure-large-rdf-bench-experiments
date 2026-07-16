@@ -1,0 +1,19 @@
+# Base provisioning shared by every node (client + 13 endpoints).
+# Run first (`make common`, or via `make provision`).
+- name: Base provisioning (all nodes)
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Expand root disk to full physical disk (+reboot)
+      ansible.builtin.include_tasks: tasks/expand_disk.yml
+      when: expand_root_disk | bool
+
+    - name: Enable outbound IPv4 internet (NAT)
+      ansible.builtin.include_tasks: tasks/enable_internet.yml
+      when: enable_nat | bool
+
+    - name: System setup and base dependencies
+      ansible.builtin.include_tasks: tasks/system.yml
+
+    - name: Install Node.js and Yarn
+      ansible.builtin.include_tasks: tasks/nodejs.yml

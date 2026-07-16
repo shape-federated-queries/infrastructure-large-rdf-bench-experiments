@@ -16,6 +16,7 @@
       - p7zip-full        # provides 7za/7zr
       - make
       - screen            # run the (multi-day) benchmark detached from your laptop
+      - rsync             # node-to-node HDT transfer (client -> endpoints)
       - ca-certificates
     state: present
     update_cache: true

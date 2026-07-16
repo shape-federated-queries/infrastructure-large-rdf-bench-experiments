@@ -1,0 +1,25 @@
+# Provision the experiment/client node and kick off data generation. The pipeline
+# is started detached (screen) on the client, so it keeps running after your laptop
+# disconnects -- watch it with `make status`. Assumes `common.yml` ran first.
+- name: Provision the client and start data generation
+  hosts: client
+  gather_facts: true
+  tasks:
+    - name: Install Docker
+      ansible.builtin.include_tasks: tasks/docker.yml
+
+    - name: Install Go
+      ansible.builtin.include_tasks: tasks/golang.yml
+
+    - name: Install sophia-cli (sop)
+      ansible.builtin.include_tasks: tasks/sop.yml
+      when: install_sop | bool
+
+    - name: Clone the experiment repository (+submodules)
+      ansible.builtin.include_tasks: tasks/clone.yml
+
+    - name: Install Node dependencies (yarn install)
+      ansible.builtin.include_tasks: tasks/install.yml
+
+    - name: Kick off the data pipeline (detached)
+      ansible.builtin.include_tasks: tasks/generate.yml

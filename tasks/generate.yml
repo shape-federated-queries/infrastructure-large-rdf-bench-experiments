@@ -1,0 +1,16 @@
+# Start `make pipeline` in a detached screen so it survives your laptop
+# disconnecting. Watch progress with `make status` (tails ~/generate.log). The data
+# Makefile is stamp-based, so a re-run resumes rather than redoing finished work.
+- name: Check whether a generation screen is already running
+  ansible.builtin.command: screen -ls
+  register: screen_ls
+  changed_when: false
+  failed_when: false
+
+- name: Kick off the data pipeline detached
+  ansible.builtin.shell:
+    cmd: screen -dmS generate bash -c 'make pipeline > "$HOME/generate.log" 2>&1'
+    chdir: "{{ experiment_dest }}/data/benchmark"
+  environment:
+    PATH: "{{ ansible_env.HOME }}/.cargo/bin:/usr/local/go/bin:{{ ansible_env.PATH }}"
+  when: "'.generate' not in screen_ls.stdout"

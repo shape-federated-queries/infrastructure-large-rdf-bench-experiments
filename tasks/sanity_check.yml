@@ -1,0 +1,19 @@
+# Render endpoints.json on the client from the inventory, then ASK every endpoint
+# (yarn healthcheck fails the play if any is unreachable). Leaves the experiment
+# ready to run.
+- name: Render endpoints.json from the inventory
+  ansible.builtin.template:
+    src: templates/endpoints.json.j2
+    dest: "{{ experiment_dest }}/endpoints.json"
+    mode: "0644"
+
+- name: Sanity-check every endpoint (yarn healthcheck)
+  ansible.builtin.command:
+    cmd: yarn healthcheck
+    chdir: "{{ experiment_dest }}"
+  changed_when: false
+  register: healthcheck
+
+- name: Show the healthcheck result
+  ansible.builtin.debug:
+    var: healthcheck.stdout_lines
