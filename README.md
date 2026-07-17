@@ -1,33 +1,37 @@
 # benchmark_infrastructure
 
-Ansible that provisions a **jFed Virtual Wall** node so the
+Ansible that stands up a **14-node jFed Virtual Wall** run of the
 [`ask-count-fedx-large-rdf-bench`](https://github.com/shape-federated-queries/ask-count-fedx-large-rdf-bench)
-experiment is ready to run. It expands the disk, enables outbound internet, installs the toolchain
-(Docker, Node/Yarn, Go, `sop`, `screen`, build tools), clones the repo with submodules, and runs
-`yarn install`. **You then SSH in and run the benchmark yourself** (it can take days — run it inside
-`screen` so you can close your laptop).
+federated-SPARQL benchmark:
+
+- **1 client** — generates the datasets and runs the jbr federation engine (the engine under test).
+- **13 endpoints** — each serves one LargeRDFBench dataset as a Comunica HDT SPARQL endpoint.
+
+It provisions every node (disk, internet, toolchain), generates the data on the client, transfers
+each HDT to its endpoint, starts the endpoints, and sanity-checks the federation. Data generation and
+the benchmark run are detached with `screen`, so **you can close your laptop** while they run.
 
 ## 1. Prerequisites
 
-- A jFed experiment swapped in with your node, and its **PEM key** at `~/.ssh/ilabt.pem` (`chmod 600`).
+- A jFed experiment swapped in with all 14 nodes on **Ubuntu 20.04**, and its **PEM key** at
+  `~/.ssh/ilabt.pem` (`chmod 600`).
 - Ansible on your laptop.
-- Your **GitHub SSH key in the local agent** (agent-forwarded to clone the private repo + submodules):
+- Your **GitHub SSH key in the local agent** (agent-forwarded so the client can clone the private
+  experiment repo + submodules):
   ```bash
   ssh-add ~/.ssh/id_ed25519 && ssh-add -l
   ```
 
-## 2. SSH config (so plain SSH and Zed can reach the node)
+## 2. SSH config
 
-jFed uses your **login key** for SSH (it keeps dumping it to a throwaway file under `~/.jFed/tmp/`).
-Copy it once to a stable path:
+jFed uses your login key for SSH (dumped to a throwaway file under `~/.jFed/tmp/`). Copy it once:
 
 ```bash
 cp "$(ls -t ~/.jFed/tmp/sshKeyUsr*.pem | head -1)" ~/.ssh/ilabt.pem && chmod 600 ~/.ssh/ilabt.pem
 ```
 
-Add to `~/.ssh/config` (the given one-liner turned into hosts; `ProxyJump` == the original
-`-oProxyCommand="ssh … -W %h:%p"`). The wildcard matches **any** Virtual Wall node, so you never edit
-this when the node changes on a swap-in — just connect with the node's full hostname:
+Add to `~/.ssh/config`. The wildcard matches any Virtual Wall node, so you never edit it on a
+swap-in. `ssh-rsa` is re-enabled because some node images only offer SHA-1 host keys:
 
 ```sshconfig
 Host wall-bastion
@@ -40,44 +44,40 @@ Host *.wall2.ilabt.iminds.be
     IdentityFile ~/.ssh/ilabt.pem
     ProxyJump wall-bastion
     ForwardAgent yes
-    ForwardX11 yes
     ServerAliveInterval 120
+    HostKeyAlgorithms +ssh-rsa
+    PubkeyAcceptedAlgorithms +ssh-rsa
 ```
-
-Check it: `ssh n061-07a.wall2.ilabt.iminds.be` (your node). In **Zed**:
-`zed ssh://n061-07a.wall2.ilabt.iminds.be/home/brtamuge/experiment` (or *projects: open remote* → enter the
-full hostname). Zed downloads a remote server on first connect, so run the playbook (or at least enable
-NAT) first, otherwise it hangs with no internet.
 
 ## 3. Configure
 
 ```bash
-cp inventory.ini.example inventory.ini   # edit the node hostname / user / PEM
+cp inventory.yml.example inventory.yml
 ```
 
-Connection settings live in `inventory.ini`; everything else (repo, versions, toggles) in
-`group_vars/all.yml`. Keep the four connection values in sync between the two.
+`inventory.yml` is the whole topology (git-ignored, so your addresses never get committed): one
+`client` node and 13 `endpoints`, each **named after the dataset it hosts**, with its wall address
+and `endpoint_port`. `endpoints.json` (dataset → host + port) is generated from this file and sent to
+the client, so the inventory is the single source of truth for addresses. Repo, versions, and toggles
+live in `group_vars/all.yml`.
 
-## 4. Provision
+## 4. Run
 
 ```bash
 ssh-add ~/.ssh/id_ed25519   # GitHub key in the agent
-make ping                   # verify connectivity
-make provision              # run the playbook (reboots once for disk expansion)
+make ping                   # all 14 nodes reachable
+make provision              # base all nodes; then client (detached data-gen) ∥ endpoints (comunica)
+make status                 # follow data generation on the client (hours)
+make transfer               # once generation is done: HDTs -> endpoints, start them, sanity-check
+make run                    # start the benchmark on the client, detached
+make run-status             # follow the benchmark log
+make results                # pull output/ back to ./results
 ```
 
-Re-runnable. NAT is re-applied each run (not reboot-persistent).
+`make provision` reboots each node once for disk expansion (the playbook waits for them) and is
+re-runnable; NAT is re-applied each run (not reboot-persistent). `make transfer` ends with the
+federation sanity check, and `make run` also runs an S1/S2 preflight that aborts the run if the
+federation errors or returns nothing.
 
-## 5. Run the benchmark (manual, on the node)
-
-```bash
-make ssh                                # or: ssh <your-node>.wall2.ilabt.iminds.be
-screen -S bench                         # so it survives disconnects
-cd experiment
-make -C data/benchmark pipeline         # generate data (download → clean → HDT): the long part
-yarn run-all                            # run the experiment (COUNT + ASK)
-# detach: Ctrl-A then D   |   reattach: screen -r bench
-```
-
-Results land in `~/experiment/output/` (`combination_0`=count, `combination_1`=ask) and
-`~/experiment/output-adhoc/`. Pull them back with `make results`.
+Results land in `./results` (`combination_0` = COUNT, `combination_1` = ASK); the per-query ad-hoc
+answers and planning-time metrics stay in `~/experiment/output-adhoc/` on the client.

@@ -39,14 +39,15 @@ ssh:         # Open a shell on the client
 	ssh $(CLIENT)
 
 run:         # Start the benchmark on the client, detached (survives disconnect)
-	ssh $(CLIENT) 'cd experiment && screen -dmS bench bash -c "DISTRIBUTED=1 yarn run-all > ~/run.log 2>&1"'
+	ssh $(CLIENT) 'cd experiment && screen -dmS bench bash -c "yarn run-all > ~/run.log 2>&1"'
 	@echo "benchmark started on $(CLIENT) (screen: bench). Watch: make run-status"
 
 run-status:  # Follow the benchmark log
 	ssh $(CLIENT) 'tail -n 40 -f ~/run.log'
 
-results:     # Pull the experiment output from the client
-	scp -r $(CLIENT):'~/experiment/output' ./results
+results:     # Pull the experiment results from the client
+	mkdir -p ./results
+	scp -r $(CLIENT):'~/experiment/{output,output-adhoc}' ./results
 
 stop:        # Stop the endpoint servers and any benchmark screen
 	ansible endpoints -m shell -a 'screen -S endpoint -X quit' || true

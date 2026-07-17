@@ -12,5 +12,5 @@
     cmd: screen -dmS generate bash -c 'make pipeline > "$HOME/generate.log" 2>&1'
     chdir: "{{ experiment_dest }}/data/benchmark"
   environment:
-    PATH: "{{ ansible_env.HOME }}/.cargo/bin:/usr/local/go/bin:{{ ansible_env.PATH }}"
+    PATH: "{{ experiment_dest }}/node_modules/.bin:{{ ansible_env.HOME }}/.cargo/bin:/usr/local/go/bin:{{ ansible_env.PATH }}"
   when: "'.generate' not in screen_ls.stdout"
