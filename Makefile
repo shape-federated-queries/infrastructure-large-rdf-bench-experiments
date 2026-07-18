@@ -4,6 +4,7 @@
 
 INVENTORY ?= inventory-comunica.yml
 SETUP := $(patsubst inventory-%.yml,%,$(INVENTORY))
+NODE_HEAP_MB ?= 12288
 PLAYBOOKS := common.yml client.yml endpoints.yml transfer.yml
 
 # Client wall address (first host of the [client] group), for ssh/run/results/status.
@@ -52,8 +53,8 @@ deploy:      # Redeploy latest experiment code on the client (no reprovision)
 	ssh $(CLIENT) 'cd experiment && git pull --ff-only && yarn install --frozen-lockfile'
 
 run: deploy  # Redeploy latest, then start the benchmark on the client, detached
-	ssh $(CLIENT) 'cd experiment && screen -dmS bench bash -c "yarn run-all > ~/run.log 2>&1"'
-	@echo "benchmark started on $(CLIENT) (screen: bench). Watch: make run-status"
+	ssh $(CLIENT) 'cd experiment && screen -dmS bench bash -c "NODE_HEAP_MB=$(NODE_HEAP_MB) yarn run-all > ~/run.log 2>&1"'
+	@echo "benchmark started on $(CLIENT) (screen: bench, node heap $(NODE_HEAP_MB)MB). Watch: make run-status"
 
 run-status:  # Follow the benchmark log
 	ssh $(CLIENT) 'tail -n 40 -f ~/run.log'
