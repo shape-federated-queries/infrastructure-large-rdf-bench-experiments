@@ -1,6 +1,9 @@
 inventory.yml
 inventory.ini
 
+# Pulled experiment results
+results/
+
 # Ansible artifacts
 *.retry
 

@@ -51,7 +51,7 @@
 - name: Serve the QLever index (detached)
   ansible.builtin.command:
     cmd: >
-      docker run -d --name {{ qlever_container_name }}
+      docker run -d --restart unless-stopped --name {{ qlever_container_name }}
       --user {{ endpoint_uid.stdout }}:{{ endpoint_gid.stdout }}
       --entrypoint qlever-server
       -v {{ endpoint_data_dir }}:/data -w /data
@@ -59,6 +59,7 @@
       {{ qlever_image }}
       -i {{ inventory_hostname }} -p {{ endpoint_port }}
       -m {{ qlever_memory_max }} -c {{ qlever_cache_max }}
+      --cache-max-num-entries {{ qlever_cache_entries }}
       -s {{ qlever_query_timeout }}
 
 - name: Wait for the endpoint to listen

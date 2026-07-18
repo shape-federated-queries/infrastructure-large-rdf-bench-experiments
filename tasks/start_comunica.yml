@@ -1,25 +1,41 @@
-# Serve this node's HDT with comunica on {{ endpoint_port }}, detached in a named
-# screen (named so we can stop it cleanly -- never pkill -f a pattern that matches
-# the launcher). Then wait for the port and verify it answers ASK.
+# Serve this node's HDT with comunica under a health-check supervisor
+# (serve_comunica.sh), detached in a named screen. The supervisor restarts a hung
+# or crashed comunica -- comunica's own cluster can leave a worker hung without the
+# primary exiting, which a restart-on-exit loop never catches. Then wait for the
+# port and verify it answers ASK.
 - name: Stop any existing endpoint screen
   ansible.builtin.command: screen -S endpoint -X quit
   changed_when: false
   failed_when: false
 
-- name: Serve this endpoint's HDT with comunica (detached)
+- name: Kill any leftover comunica on this port
+  ansible.builtin.command: >
+    pkill -9 -f "comunica-sparql-hdt-http hdt@{{ endpoint_data_dir }}/{{ inventory_hostname }}.hdt -p {{ endpoint_port }}"
+  changed_when: false
+  failed_when: false
+
+- name: Install the comunica supervisor script
+  ansible.builtin.copy:
+    src: serve_comunica.sh
+    dest: "{{ endpoint_data_dir }}/serve_comunica.sh"
+    mode: "0755"
+
+- name: Serve this endpoint's HDT with comunica (supervised, detached)
   ansible.builtin.shell:
     cmd: >
-      screen -dmS endpoint comunica-sparql-hdt-http
-      hdt@{{ endpoint_data_dir }}/{{ inventory_hostname }}.hdt
-      -p {{ endpoint_port }} -t 1800 --lenient
+      screen -dmS endpoint bash {{ endpoint_data_dir }}/serve_comunica.sh
+      {{ endpoint_data_dir }}/{{ inventory_hostname }}.hdt {{ endpoint_port }} 1800
   environment:
     NODE_OPTIONS: "--max-old-space-size={{ endpoint_node_heap_mb | default(4096) }}"
+    ENDPOINT_STARTUP_MAX: "{{ endpoint_startup_max }}"
+    ENDPOINT_CHECK_INTERVAL: "{{ endpoint_check_interval }}"
+    ENDPOINT_FAIL_LIMIT: "{{ endpoint_fail_limit }}"
 
 - name: Wait for the endpoint to listen
   ansible.builtin.wait_for:
     host: 127.0.0.1
     port: "{{ endpoint_port }}"
-    timeout: 120
+    timeout: 300
 
 - name: Verify it answers ASK
   ansible.builtin.uri:

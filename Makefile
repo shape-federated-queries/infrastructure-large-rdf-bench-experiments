@@ -67,6 +67,6 @@ results:     # Pull this setup's experiment results from the client
 	scp -r $(CLIENT):'~/experiment/{output,output-adhoc}' ./results/$(SETUP)
 
 stop:        # Stop the endpoint servers (comunica screen + qlever container) and the benchmark screen
-	ansible endpoints -i $(INVENTORY) -m shell -a 'screen -S endpoint -X quit' || true
-	ansible endpoints -i $(INVENTORY) -m shell -a 'docker rm -f qlever-endpoint' || true
-	ssh $(CLIENT) 'screen -S bench -X quit' || true
+	ansible endpoints -i $(INVENTORY) -m shell -a 'screen -S endpoint -X quit 2>/dev/null || true'
+	ansible endpoints -i $(INVENTORY) -m shell -a 'command -v docker >/dev/null && docker rm -f qlever-endpoint || true'
+	ssh $(CLIENT) 'screen -S bench -X quit 2>/dev/null || true'

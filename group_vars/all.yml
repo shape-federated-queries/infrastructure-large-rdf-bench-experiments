@@ -35,12 +35,18 @@ endpoint_data_dir: "{{ ansible_env.HOME }}/data"
 endpoint_comunica_pkg: "@comunica/query-sparql-hdt"
 endpoint_node_heap_mb: 18432
 endpoint_engine: comunica
+# comunica endpoint supervisor (serve_comunica.sh): startup wait, health-check
+# interval, and consecutive failures before a hung endpoint is killed + restarted.
+endpoint_startup_max: 300
+endpoint_check_interval: 20
+endpoint_fail_limit: 3
 
 # --- QLever ------------------------------------------------------------------
 qlever_image: adfreiburg/qlever
 qlever_container_name: qlever-endpoint
 qlever_memory_max: "16G"
 qlever_cache_max: "4G"
+qlever_cache_entries: 0
 qlever_index_memory: "16G"
 qlever_query_timeout: "1800s"
 endpoint_rdf_dir: "{{ experiment_dest }}/data/benchmark/datasets"
