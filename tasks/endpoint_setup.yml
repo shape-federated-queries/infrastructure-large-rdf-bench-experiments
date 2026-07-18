@@ -1,19 +1,4 @@
-# Install the comunica SPARQL-HDT server (provides comunica-sparql-hdt-http, which
-# builds the native hdt addon -- needs build-essential from system.yml) and create
-# the directory that will hold this node's HDT.
-- name: Check for the comunica endpoint binary
-  ansible.builtin.command: which comunica-sparql-hdt-http
-  register: comunica_bin
-  changed_when: false
-  failed_when: false
-
-- name: Install the comunica SPARQL-HDT package globally
-  ansible.builtin.command: npm install -g {{ endpoint_comunica_pkg }}
-  become: true
-  when: comunica_bin.rc != 0
-
-- name: Ensure the endpoint data directory exists
-  ansible.builtin.file:
-    path: "{{ endpoint_data_dir }}"
-    state: directory
-    mode: "0755"
+# Provision this endpoint for its engine (comunica or qlever), selected per host
+# via endpoint_engine in the inventory.
+- name: Set up this endpoint for its engine
+  ansible.builtin.include_tasks: "setup_{{ endpoint_engine }}.yml"

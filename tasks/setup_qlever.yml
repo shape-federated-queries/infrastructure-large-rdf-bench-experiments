@@ -1,0 +1,15 @@
+# Install Docker, pull the QLever image, and create the directory that will hold
+# this node's RDF file plus the index QLever builds from it.
+- name: Install Docker for QLever
+  ansible.builtin.include_tasks: docker.yml
+
+- name: Pull the QLever image
+  ansible.builtin.command: docker pull {{ qlever_image }}
+  register: qlever_pull
+  changed_when: "'Downloaded newer image' in qlever_pull.stdout"
+
+- name: Ensure the endpoint data directory exists
+  ansible.builtin.file:
+    path: "{{ endpoint_data_dir }}"
+    state: directory
+    mode: "0755"

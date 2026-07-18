@@ -1,0 +1,77 @@
+# Build this node's QLever index from its RDF file (once), then serve it on
+# {{ endpoint_port }} in a detached container. The container runs directly as the
+# host user (--user) with the binary as entrypoint, bypassing the image's fragile
+# UID-remap so it can write the bind-mounted index. Then wait for the port and
+# verify it answers ASK at /sparql.
+- name: Stop any existing QLever container
+  ansible.builtin.command: docker rm -f {{ qlever_container_name }}
+  changed_when: false
+  failed_when: false
+
+- name: Get the endpoint user UID
+  ansible.builtin.command: id -u
+  register: endpoint_uid
+  changed_when: false
+
+- name: Get the endpoint user GID
+  ansible.builtin.command: id -g
+  register: endpoint_gid
+  changed_when: false
+
+- name: Check whether the QLever index already exists
+  ansible.builtin.stat:
+    path: "{{ endpoint_data_dir }}/{{ inventory_hostname }}.index.spo"
+  register: qlever_index
+
+- name: Locate the transferred RDF file
+  ansible.builtin.find:
+    paths: "{{ endpoint_data_dir }}"
+    patterns: "{{ qlever_rdf_patterns }}"
+  register: qlever_rdf
+  when: not qlever_index.stat.exists
+
+- name: Fail if no RDF file was found
+  ansible.builtin.fail:
+    msg: "No RDF file matching {{ qlever_rdf_patterns | join(', ') }} in {{ endpoint_data_dir }}"
+  when: not qlever_index.stat.exists and qlever_rdf.matched == 0
+
+- name: Build the QLever index
+  ansible.builtin.command:
+    cmd: >
+      docker run --rm
+      --user {{ endpoint_uid.stdout }}:{{ endpoint_gid.stdout }}
+      --entrypoint qlever-index
+      -v {{ endpoint_data_dir }}:/data -w /data
+      {{ qlever_image }}
+      -i {{ inventory_hostname }}
+      -f {{ qlever_rdf.files[0].path | basename }}
+      -m {{ qlever_index_memory }}
+  when: not qlever_index.stat.exists
+
+- name: Serve the QLever index (detached)
+  ansible.builtin.command:
+    cmd: >
+      docker run -d --name {{ qlever_container_name }}
+      --user {{ endpoint_uid.stdout }}:{{ endpoint_gid.stdout }}
+      --entrypoint qlever-server
+      -v {{ endpoint_data_dir }}:/data -w /data
+      -p {{ endpoint_port }}:{{ endpoint_port }}
+      {{ qlever_image }}
+      -i {{ inventory_hostname }} -p {{ endpoint_port }}
+      -m {{ qlever_memory_max }} -c {{ qlever_cache_max }}
+      -s {{ qlever_query_timeout }}
+
+- name: Wait for the endpoint to listen
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: "{{ endpoint_port }}"
+    timeout: 300
+
+- name: Verify it answers ASK at /sparql
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ endpoint_port }}/sparql?query=ASK%7B%3Fs%20%3Fp%20%3Fo%7D"
+    headers:
+      Accept: application/sparql-results+json
+    return_content: true
+  register: ask
+  failed_when: "'true' not in ask.content"

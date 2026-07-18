@@ -34,6 +34,20 @@ experiment_dest: "{{ ansible_env.HOME }}/experiment"
 endpoint_data_dir: "{{ ansible_env.HOME }}/data"
 endpoint_comunica_pkg: "@comunica/query-sparql-hdt"
 endpoint_node_heap_mb: 18432
+endpoint_engine: comunica
+
+# --- QLever ------------------------------------------------------------------
+qlever_image: adfreiburg/qlever
+qlever_container_name: qlever-endpoint
+qlever_memory_max: "16G"
+qlever_cache_max: "4G"
+qlever_index_memory: "16G"
+qlever_query_timeout: "1800s"
+endpoint_rdf_dir: "{{ experiment_dest }}/data/benchmark/datasets"
+qlever_rdf_patterns:
+  - "{{ inventory_hostname }}.nt"
+  - "{{ inventory_hostname }}.ttl"
+  - "{{ inventory_hostname }}.nq"
 
 # --- Toolchain ---------------------------------------------------------------
 nodejs_major: "22"

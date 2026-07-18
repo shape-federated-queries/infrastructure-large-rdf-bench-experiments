@@ -1,15 +1,29 @@
 # benchmark_infrastructure
 
-Ansible that stands up a **14-node jFed Virtual Wall** run of the
+Ansible that stands up **14-node jFed Virtual Wall** runs of the
 [`ask-count-fedx-large-rdf-bench`](https://github.com/shape-federated-queries/ask-count-fedx-large-rdf-bench)
 federated-SPARQL benchmark:
 
 - **1 client** — generates the datasets and runs the jbr federation engine (the engine under test).
-- **13 endpoints** — each serves one LargeRDFBench dataset as a Comunica HDT SPARQL endpoint.
+- **13 endpoints** — each serves one LargeRDFBench dataset as a SPARQL endpoint, using either
+  **Comunica HDT** or **QLever** (per endpoint, chosen in the inventory).
 
-It provisions every node (disk, internet, toolchain), generates the data on the client, transfers
-each HDT to its endpoint, starts the endpoints, and sanity-checks the federation. Data generation and
-the benchmark run are detached with `screen`, so **you can close your laptop** while they run.
+Every endpoint answers SPARQL at `http://<host>:3002/sparql` regardless of engine, so the federation
+never has to know which is behind a URL.
+
+## Three setups
+
+The engine of each endpoint is set per host (`endpoint_engine`) in three inventory files:
+
+| Setup | Inventory | Endpoints |
+|-------|-----------|-----------|
+| **comunica** | `inventory-comunica.yml` | all 13 Comunica HDT |
+| **mixed** | `inventory-mixed.yml` | QLever for the 5 hard datasets (Affymetrix, DBPedia-Subset, LinkedTCGA-A/E/M), Comunica for the other 8 |
+| **qlever** | `inventory-qlever.yml` | all 13 QLever |
+
+Each setup is its own jFed experiment (its own 14 nodes). They are independent, so you can run them
+in parallel. Data generation is duplicated per client, which is free in wall-clock when the setups
+run concurrently, and keeps every transfer on the experiment's fast internal LAN.
 
 ## 1. Prerequisites
 
@@ -21,6 +35,8 @@ the benchmark run are detached with `screen`, so **you can close your laptop** w
   ```bash
   ssh-add ~/.ssh/id_ed25519 && ssh-add -l
   ```
+
+Docker is installed automatically on QLever endpoints (and on the client); you don't set it up.
 
 ## 2. SSH config
 
@@ -51,33 +67,44 @@ Host *.wall2.ilabt.iminds.be
 
 ## 3. Configure
 
-```bash
-cp inventory.yml.example inventory.yml
-```
-
-`inventory.yml` is the whole topology (git-ignored, so your addresses never get committed): one
-`client` node and 13 `endpoints`, each **named after the dataset it hosts**, with its wall address
-and `endpoint_port`. `endpoints.json` (dataset → host + port) is generated from this file and sent to
-the client, so the inventory is the single source of truth for addresses. Repo, versions, and toggles
-live in `group_vars/all.yml`.
+For each setup you run, edit the wall addresses in its inventory file (`inventory-comunica.yml`,
+`inventory-mixed.yml`, `inventory-qlever.yml`). Each is the whole topology for its experiment: one
+`client` node and 13 `endpoints`, each **named after the dataset it hosts**, with its wall address,
+`endpoint_port`, and `endpoint_engine`. `endpoints.json` (dataset → host + port) is generated from
+this file and sent to the client, so the inventory is the single source of truth for addresses.
+Repo, versions, engine defaults, and QLever memory/timeout knobs live in `group_vars/all.yml`.
 
 ## 4. Run
 
+Every target takes the setup either as `INVENTORY=inventory-<setup>.yml` or via the `make
+<setup>-<target>` shortcut. Examples below use the shortcuts.
+
+The one-shot path per setup:
+
 ```bash
-ssh-add ~/.ssh/id_ed25519   # GitHub key in the agent
-make ping                   # all 14 nodes reachable
-make provision              # base all nodes; then client (detached data-gen) ∥ endpoints (comunica)
-make status                 # follow data generation on the client (hours)
-make transfer               # once generation is done: HDTs -> endpoints, start them, sanity-check
-make run                    # start the benchmark on the client, detached
-make run-status             # follow the benchmark log
-make results                # pull output/ back to ./results
+ssh-add ~/.ssh/id_ed25519       # GitHub key in the agent
+make comunica-ping              # all 14 nodes reachable
+make comunica-auto              # provision -> wait for data-gen -> transfer -> run (detached)
+make comunica-run-status        # follow the benchmark log
+make comunica-results           # pull output/ to ./results/comunica
 ```
 
-`make provision` reboots each node once for disk expansion (the playbook waits for them) and is
-re-runnable; NAT is re-applied each run (not reboot-persistent). `make transfer` ends with the
-federation sanity check, and `make run` also runs an S1/S2 preflight that aborts the run if the
-federation errors or returns nothing.
+Swap `comunica-` for `mixed-` or `qlever-` (run them in parallel from separate shells). Or drive
+the steps individually:
 
-Results land in `./results` (`combination_0` = COUNT, `combination_1` = ASK); the per-query ad-hoc
-answers and planning-time metrics stay in `~/experiment/output-adhoc/` on the client.
+```bash
+make provision INVENTORY=inventory-qlever.yml   # base nodes; client (data-gen) ∥ endpoints (docker + qlever)
+make status    INVENTORY=inventory-qlever.yml   # follow data generation on the client (hours)
+make transfer  INVENTORY=inventory-qlever.yml   # RDF/HDT -> endpoints, build/start them, sanity-check
+make run       INVENTORY=inventory-qlever.yml   # start the benchmark, detached
+make stop      INVENTORY=inventory-qlever.yml   # stop endpoint servers + benchmark
+```
+
+`make provision` reboots each node once for disk expansion (the playbook waits) and is re-runnable;
+NAT is re-applied each run (not reboot-persistent). Comunica endpoints receive the HDT (+ index);
+QLever endpoints receive the raw RDF file and build their index on the node (the big datasets take a
+while). `make transfer` ends with the federation sanity check, and `make run` also runs an S1/S2
+preflight that aborts the run if the federation errors or returns nothing.
+
+Results land in `./results/<setup>` (`combination_0` = COUNT, `combination_1` = ASK); the per-query
+ad-hoc answers and planning-time metrics stay in `~/experiment/output-adhoc/` on the client.

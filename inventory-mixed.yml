@@ -1,0 +1,39 @@
+# =============================================================================
+# Setup 2 of 3: MIXED -- QLever for the five hard datasets (Affymetrix,
+# DBPedia-Subset, LinkedTCGA-A/E/M), Comunica HDT for the other eight.
+# Select with: make provision INVENTORY=inventory-mixed.yml (and transfer/run).
+#
+# This setup runs on a FRESH jFed swap-in: replace every nXXX-XXx placeholder
+# below with the new wall address. The endpoint_engine column is fixed -- only the
+# addresses change per swap-in.
+# =============================================================================
+
+all:
+  vars:
+    ansible_user: brtamuge
+    ansible_ssh_private_key_file: ~/.ssh/ilabt.pem
+    ansible_python_interpreter: /usr/bin/python3
+    ansible_ssh_common_args: >-
+      -o ForwardAgent=yes -o ServerAliveInterval=120
+      -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa
+      -o ProxyCommand="ssh -i ~/.ssh/ilabt.pem -W %h:%p fffbrtamuge@bastion.ilabt.imec.be"
+  children:
+    client:
+      hosts:
+        client-node:
+          ansible_host: n061-09b.wall2.ilabt.iminds.be
+    endpoints:
+      hosts:
+        Affymetrix:     { ansible_host: n061-04a.wall2.ilabt.iminds.be, endpoint_port: 3002, endpoint_engine: qlever }
+        ChEBI:          { ansible_host: n061-05a.wall2.ilabt.iminds.be, endpoint_port: 3002, endpoint_engine: comunica }
+        DBPedia-Subset: { ansible_host: n061-09a.wall2.ilabt.iminds.be, endpoint_port: 3002, endpoint_engine: qlever }
+        DrugBank:       { ansible_host: n061-07a.wall2.ilabt.iminds.be, endpoint_port: 3002, endpoint_engine: comunica }
+        GeoNames:       { ansible_host: n061-06b.wall2.ilabt.iminds.be, endpoint_port: 3002, endpoint_engine: comunica }
+        Jamendo:        { ansible_host: n061-08a.wall2.ilabt.iminds.be, endpoint_port: 3002, endpoint_engine: comunica }
+        KEGG:           { ansible_host: n061-05b.wall2.ilabt.iminds.be, endpoint_port: 3002, endpoint_engine: comunica }
+        LinkedTCGA-A:   { ansible_host: n061-07b.wall2.ilabt.iminds.be, endpoint_port: 3002, endpoint_engine: qlever }
+        LinkedTCGA-E:   { ansible_host: n061-06a.wall2.ilabt.iminds.be, endpoint_port: 3002, endpoint_engine: qlever }
+        LinkedTCGA-M:   { ansible_host: n061-01a.wall2.ilabt.iminds.be, endpoint_port: 3002, endpoint_engine: qlever }
+        LMDB:           { ansible_host: n063-08a.wall2.ilabt.iminds.be, endpoint_port: 3002, endpoint_engine: comunica }
+        NYT:            { ansible_host: n063-02b.wall2.ilabt.iminds.be, endpoint_port: 3002, endpoint_engine: comunica }
+        SWDFood:        { ansible_host: n063-03a.wall2.ilabt.iminds.be, endpoint_port: 3002, endpoint_engine: comunica }

@@ -1,0 +1,39 @@
+# =============================================================================
+# Setup 1 of 3: ALL endpoints served by Comunica HDT.
+# Select with: make provision INVENTORY=inventory-comunica.yml (and transfer/run).
+#
+# Self-contained topology: each endpoint host is named after the DATASET it serves
+# (inventory_hostname), ansible_host is its wall address, endpoint_engine picks the
+# server. The wall addresses are duplicated across the three inventory-*.yml files
+# -- keep them in sync on each jFed swap-in.
+# =============================================================================
+
+all:
+  vars:
+    ansible_user: brtamuge
+    ansible_ssh_private_key_file: ~/.ssh/ilabt.pem
+    ansible_python_interpreter: /usr/bin/python3
+    ansible_ssh_common_args: >-
+      -o ForwardAgent=yes -o ServerAliveInterval=120
+      -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa
+      -o ProxyCommand="ssh -i ~/.ssh/ilabt.pem -W %h:%p fffbrtamuge@bastion.ilabt.imec.be"
+  children:
+    client:
+      hosts:
+        client-node:
+          ansible_host: n063-20a.wall2.ilabt.iminds.be
+    endpoints:
+      hosts:
+        Affymetrix:     { ansible_host: n063-16a.wall2.ilabt.iminds.be, endpoint_port: 3002, endpoint_engine: comunica }
+        ChEBI:          { ansible_host: n062-05b.wall2.ilabt.iminds.be, endpoint_port: 3002, endpoint_engine: comunica }
+        DBPedia-Subset: { ansible_host: n063-16b.wall2.ilabt.iminds.be, endpoint_port: 3002, endpoint_engine: comunica }
+        DrugBank:       { ansible_host: n062-04b.wall2.ilabt.iminds.be, endpoint_port: 3002, endpoint_engine: comunica }
+        GeoNames:       { ansible_host: n063-19a.wall2.ilabt.iminds.be, endpoint_port: 3002, endpoint_engine: comunica }
+        Jamendo:        { ansible_host: n061-18b.wall2.ilabt.iminds.be, endpoint_port: 3002, endpoint_engine: comunica }
+        KEGG:           { ansible_host: n063-18a.wall2.ilabt.iminds.be, endpoint_port: 3002, endpoint_engine: comunica }
+        LinkedTCGA-A:   { ansible_host: n063-17a.wall2.ilabt.iminds.be, endpoint_port: 3002, endpoint_engine: comunica }
+        LinkedTCGA-E:   { ansible_host: n061-19a.wall2.ilabt.iminds.be, endpoint_port: 3002, endpoint_engine: comunica }
+        LinkedTCGA-M:   { ansible_host: n061-14b.wall2.ilabt.iminds.be, endpoint_port: 3002, endpoint_engine: comunica }
+        LMDB:           { ansible_host: n061-10a.wall2.ilabt.iminds.be, endpoint_port: 3002, endpoint_engine: comunica }
+        NYT:            { ansible_host: n061-10b.wall2.ilabt.iminds.be, endpoint_port: 3002, endpoint_engine: comunica }
+        SWDFood:        { ansible_host: n063-13b.wall2.ilabt.iminds.be, endpoint_port: 3002, endpoint_engine: comunica }
