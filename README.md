@@ -76,35 +76,66 @@ Repo, versions, engine defaults, and QLever memory/timeout knobs live in `group_
 
 ## 4. Run
 
-Every target takes the setup either as `INVENTORY=inventory-<setup>.yml` or via the `make
-<setup>-<target>` shortcut. Examples below use the shortcuts.
-
-The one-shot path per setup:
-
-```bash
-ssh-add ~/.ssh/id_ed25519       # GitHub key in the agent
-make comunica-ping              # all 14 nodes reachable
-make comunica-auto              # provision -> wait for data-gen -> transfer -> run (detached)
-make comunica-run-status        # follow the benchmark log
-make comunica-results           # pull output/ to ./results/comunica
-```
-
-Swap `comunica-` for `mixed-` or `qlever-` (run them in parallel from separate shells). Or drive
-the steps individually:
+Every target takes the setup via the `make <setup>-<target>` shortcut (or explicitly with
+`INVENTORY=inventory-<setup>.yml`). Run the steps **one at a time** — each command runs and returns;
+the long waits (generation, benchmark) happen **detached on the client**, so you never sit on a
+blocking command for hours. Swap `comunica-` for `mixed-`/`qlever-` and run setups in parallel from
+separate shells.
 
 ```bash
-make provision INVENTORY=inventory-qlever.yml   # base nodes; client (data-gen) ∥ endpoints (docker + qlever)
-make status    INVENTORY=inventory-qlever.yml   # follow data generation on the client (hours)
-make transfer  INVENTORY=inventory-qlever.yml   # RDF/HDT -> endpoints, build/start them, sanity-check
-make run       INVENTORY=inventory-qlever.yml   # start the benchmark, detached
-make stop      INVENTORY=inventory-qlever.yml   # stop endpoint servers + benchmark
+ssh-add ~/.ssh/id_ed25519     # GitHub key in the agent (client clones the private repo)
+
+make comunica-ping            # 💻 open, ~seconds  — all 14 nodes reachable
+make comunica-provision       # 💻 open, ~20-30 min — base nodes (one reboot each), set up endpoints,
+                              #                       and kick off data generation DETACHED on the client
+#   → generation now runs on its own (hours). ✅ CLOSE THE LAPTOP.
+
+make comunica-progress        # 💻 open, ~seconds  — snapshot; repeat until generation has finished
+make comunica-transfer        # 💻 open, minutes   — ship data to endpoints + start them (qlever also
+                              #                       builds its index on-node), ends with a sanity check
+make comunica-run             # 💻 open, ~seconds  — pull latest code, launch the benchmark DETACHED
+#   → benchmark now runs on its own (hours). ✅ CLOSE THE LAPTOP.
+
+make comunica-progress        # 💻 open, ~seconds  — snapshot generation + benchmark logs
+make comunica-run-status      # 💻 open (blocks)   — live-follow the benchmark log (Ctrl-C to stop)
+make comunica-results         # 💻 open, minutes   — pull output/ to ./results/comunica when done
+make comunica-stop            # stop endpoint servers + benchmark
 ```
+
+### When can I close the laptop?
+
+Data generation and the benchmark run inside `screen` **on the client**, so they survive you closing
+the laptop. The Ansible steps (`provision`, `transfer`) run **on your laptop** and must stay open
+until they return — but they are bounded (tens of minutes), never hours.
+
+| After you run… | Laptop can close? | Why |
+|---|---|---|
+| `provision` (once it returns) | ✅ yes | generation runs detached on the client (the long wait) |
+| `transfer` (while it runs) | ❌ no | Ansible drives it from your laptop (bounded) |
+| `run` (once it returns) | ✅ yes | benchmark runs detached on the client (the long wait) |
+| `provision` / `transfer` (while running) | ❌ no | closing kills the laptop-side Ansible |
+
+Rule of thumb: **you only ever hold the laptop open for `provision` and `transfer`** (short, bounded).
+The two multi-hour phases — generation and the benchmark — are always safe to close through; come back
+and check with `make <setup>-progress`.
+
+### Checking progress
+
+- `make <setup>-progress` — **non-blocking snapshot** of the generation + benchmark logs. Runs,
+  prints, returns. Use this to poll; nothing to leave open. **Safe to close right after.**
+- `make <setup>-status` / `make <setup>-run-status` — **live follow** (`tail -f`) of the generation
+  / benchmark log. These *block* to stream new lines, but they don't hold any work — hit `Ctrl-C`
+  and close whenever you like; the run keeps going on the client.
+
+Concretely: after `make <setup>-provision` returns you may close immediately, then reopen later and
+`make <setup>-progress` to see if generation finished. After `make <setup>-run` returns the benchmark
+is detached — close, and reopen only to `progress` / `results`.
 
 `make provision` reboots each node once for disk expansion (the playbook waits) and is re-runnable;
 NAT is re-applied each run (not reboot-persistent). Comunica endpoints receive the HDT (+ index);
 QLever endpoints receive the raw RDF file and build their index on the node (the big datasets take a
-while). `make transfer` ends with the federation sanity check, and `make run` also runs an S1/S2
-preflight that aborts the run if the federation errors or returns nothing.
+while). `make run` pulls the latest experiment code first, then runs an S1/S2 preflight that aborts
+if the federation errors or returns nothing.
 
 Results land in `./results/<setup>` (`combination_0` = COUNT, `combination_1` = ASK); the per-query
 ad-hoc answers and planning-time metrics stay in `~/experiment/output-adhoc/` on the client.

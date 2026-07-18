@@ -10,9 +10,9 @@ PLAYBOOKS := common.yml client.yml endpoints.yml transfer.yml
 CLIENT := $(shell ansible-inventory -i $(INVENTORY) --list 2>/dev/null | \
 	python3 -c 'import sys,json;d=json.load(sys.stdin);h=d["client"]["hosts"][0];print(d["_meta"]["hostvars"][h]["ansible_host"])' 2>/dev/null)
 
-.PHONY: ping check provision common client endpoints status transfer wait-generate auto ssh run run-status results stop
+.PHONY: ping check provision common client endpoints status transfer ssh deploy run run-status progress results stop
 
-# Per-setup shortcuts: `make comunica-auto`, `make mixed-provision`, `make qlever-results`, ...
+# Per-setup shortcuts: `make comunica-provision`, `make mixed-run`, `make qlever-results`, ...
 comunica-%:
 	@$(MAKE) $* INVENTORY=inventory-comunica.yml
 mixed-%:
@@ -42,29 +42,25 @@ endpoints:   # Set up the endpoint nodes for their engine (comunica / qlever)
 status:      # Follow the client's data-generation log
 	ssh $(CLIENT) 'tail -n 40 -f ~/generate.log'
 
-wait-generate: # Block until the client's data generation finishes
-	@echo "waiting for data generation on $(CLIENT)..."
-	ssh $(CLIENT) 'while screen -list 2>/dev/null | grep -q generate; do sleep 30; done'
-	@echo "data generation finished on $(CLIENT)"
-
 transfer:    # Transfer data -> start endpoints -> sanity check (after generation is done)
 	ansible-playbook -i $(INVENTORY) transfer.yml
-
-auto:        # End-to-end: provision -> wait for generation -> transfer -> run
-	$(MAKE) provision INVENTORY=$(INVENTORY)
-	$(MAKE) wait-generate INVENTORY=$(INVENTORY)
-	$(MAKE) transfer INVENTORY=$(INVENTORY)
-	$(MAKE) run INVENTORY=$(INVENTORY)
 
 ssh:         # Open a shell on the client
 	ssh $(CLIENT)
 
-run:         # Start the benchmark on the client, detached (survives disconnect)
+deploy:      # Redeploy latest experiment code on the client (no reprovision)
+	ssh $(CLIENT) 'cd experiment && git pull --ff-only && yarn install --frozen-lockfile'
+
+run: deploy  # Redeploy latest, then start the benchmark on the client, detached
 	ssh $(CLIENT) 'cd experiment && screen -dmS bench bash -c "yarn run-all > ~/run.log 2>&1"'
 	@echo "benchmark started on $(CLIENT) (screen: bench). Watch: make run-status"
 
 run-status:  # Follow the benchmark log
 	ssh $(CLIENT) 'tail -n 40 -f ~/run.log'
+
+progress:    # Non-following snapshot of this setup's generation + benchmark logs
+	@echo "== $(SETUP): data generation =="; ssh $(CLIENT) 'tail -n 15 ~/generate.log 2>/dev/null || echo "(none yet)"'
+	@echo "== $(SETUP): benchmark =="; ssh $(CLIENT) 'tail -n 15 ~/run.log 2>/dev/null || echo "(none yet)"'
 
 results:     # Pull this setup's experiment results from the client
 	mkdir -p ./results/$(SETUP)
