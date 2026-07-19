@@ -4,7 +4,7 @@
 
 INVENTORY ?= inventory-comunica.yml
 SETUP := $(patsubst inventory-%.yml,%,$(INVENTORY))
-NODE_HEAP_MB ?= 12288
+NODE_HEAP_MB ?= 18432
 PLAYBOOKS := common.yml client.yml endpoints.yml transfer.yml
 
 # Client wall address (first host of the [client] group), for ssh/run/results/status.
