@@ -47,7 +47,7 @@ qlever_container_name: qlever-endpoint
 qlever_memory_max: "16G"
 qlever_cache_max: "4G"
 qlever_cache_entries: 0
-qlever_index_memory: "16G"
+qlever_index_memory: "12G"
 qlever_query_timeout: "1800s"
 endpoint_rdf_dir: "{{ experiment_dest }}/data/benchmark/datasets"
 qlever_rdf_patterns:
