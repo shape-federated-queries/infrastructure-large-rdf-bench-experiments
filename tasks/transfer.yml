@@ -22,6 +22,7 @@
     patterns: "{{ qlever_rdf_patterns }}"
   register: qlever_rdf_src
   delegate_to: "{{ groups['client'][0] }}"
+  throttle: 4
   when: endpoint_engine == 'qlever'
 
 - name: Fail if no RDF source file was found

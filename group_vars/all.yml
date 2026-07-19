@@ -52,7 +52,6 @@ qlever_query_timeout: "1800s"
 endpoint_rdf_dir: "{{ experiment_dest }}/data/benchmark/datasets"
 qlever_rdf_patterns:
   - "{{ inventory_hostname }}.nt"
-  - "{{ inventory_hostname }}.ttl"
   - "{{ inventory_hostname }}.nq"
 
 # --- Toolchain ---------------------------------------------------------------
